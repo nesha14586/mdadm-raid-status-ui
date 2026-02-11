@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>mdadm RAID status</title>
+  <link rel="stylesheet" href="./app.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="titleblock">
+        <h1>mdadm RAID status</h1>
+        <p class="subtitle">RAID health at a glance</p>
+      </div>
+
+      <div class="actions">
+        <button id="btnRefresh" class="btn primary" type="button">Refresh</button>
+
+        <div class="seg" role="group" aria-label="Theme">
+          <button id="btnThemeLight" class="btn ghost small" type="button" title="Light">Light</button>
+          <button id="btnThemeDark" class="btn ghost small" type="button" title="Dark">Dark</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="arraysRoot"></div>
+
+    <footer class="footer">
+      <span class="muted">Source:</span>
+      <span class="mono">status.json</span>
+      <span class="muted"> | </span>
+      <span id="lastFetch" class="muted">-</span>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

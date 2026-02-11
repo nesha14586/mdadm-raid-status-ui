@@ -1,0 +1,13 @@
+# Docker
+*.log
+docker-compose.yml
+
+# Generated files
+web/status.json
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

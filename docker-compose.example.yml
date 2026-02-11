@@ -1,0 +1,56 @@
+services:
+  raid-status-gen:
+    build: ./generator
+    container_name: raid-status-gen
+    restart: unless-stopped
+    pids_limit: 50
+    mem_limit: 128m
+    environment:
+      - OUT=/data/status.json
+      - INTERVAL=30
+      - CONF=/app/config.json
+    volumes:
+      - ./web:/data
+      - /run/udev:/run/udev:ro
+      - ./generator/config.json:/app/config.json:ro
+
+    # Security hardening (no privileged container)
+    # Note: to keep the full functionality (mdadm + udev + smartctl serials),
+    # you still need access to the relevant block devices.
+    # Add ONLY the devices you need (example below). Avoid mapping all of /dev.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_RAWIO
+
+    # Minimal device access examples (adjust for your host):
+    devices:
+      - /dev/md0:/dev/md0
+      # Add your member disks for serials/WWN:
+      # - /dev/sda:/dev/sda
+      # - /dev/sdb:/dev/sdb
+      # - /dev/sdc:/dev/sdc
+      # If smartctl needs SCSI generic devices behind HBA, also add:
+      # - /dev/sg0:/dev/sg0
+      # - /dev/sg1:/dev/sg1
+
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /data/status.json"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+
+  raid-status-web:
+    image: nginx:alpine
+    container_name: raid-status-web
+    restart: unless-stopped
+    ports:
+      - "8099:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
