@@ -354,7 +354,7 @@ function renderAll(data){
     empty.className = "card";
     const b = document.createElement("div");
     b.className = "cardBody";
-    b.textContent = "No mdadm arrays found.";
+    b.textContent = "No mdadm arrays found. Check device mappings in docker-compose.yml.";
     empty.appendChild(b);
     els.arraysRoot.appendChild(empty);
     return;
