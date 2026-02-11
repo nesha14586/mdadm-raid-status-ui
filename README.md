@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/nesha14586/mdstat-ui">
-  <img width="250" alt="mdstat-ui logo" src="assets/logo.svg">
+  <img width="250" alt="mdstat-ui logo" src="web/assets/logo.svg">
   </a>
 </p>
 
@@ -28,7 +28,7 @@ of array health without installing a full monitoring stack.
 
 ------------------------------------------------------------------------
 
-![mdadm RAID Status UI Preview](assets/dashboard.png)
+![mdadm RAID Status UI Preview](web/assets/dashboard.png)
 
 ## Features
 
