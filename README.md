@@ -166,10 +166,7 @@ services:
 
 ## Roadmap
 
--   Multi-array support
--   Health alerts
--   Webhook notifications
--   Published Docker image
+-   TBA
 
 ------------------------------------------------------------------------
 
