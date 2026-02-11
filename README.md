@@ -1,4 +1,10 @@
-# mdadm RAID Status UI
+<p align="center">
+  <a href="https://github.com/nesha14586/mdstat-ui">
+  <img width="250" alt="scrutiny_view" src="assets/logo.svg">
+  </a>
+</p>
+
+# mdstat-ui
 
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -69,8 +75,8 @@ of array health without installing a full monitoring stack.
 ## Quick Start
 
 ``` bash
-git clone https://github.com/YOUR_USERNAME/mdadm-raid-status-ui.git
-cd mdadm-raid-status-ui
+git clone https://github.com/YOUR_USERNAME/mdstat-ui.git
+cd mdstat-ui
 cp docker-compose.example.yml docker-compose.yml
 # edit docker-compose.yml and set your /dev/mdX and disks
 docker compose up -d --build
@@ -105,6 +111,18 @@ Fields:
 If both `include_arrays` and `exclude_arrays` are empty, all detected arrays will be shown.
 
 ------------------------------------------------------------------------
+
+## File permissions
+
+The generator container writes `status.json` to the shared volume.
+Make sure the project directory is writable by Docker.
+
+If you encounter permission errors:
+
+``` bash
+sudo chown -R root:root .
+sudo chmod -R 755 .
+```
 
 ## Security Model
 
