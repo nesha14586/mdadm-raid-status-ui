@@ -358,10 +358,9 @@ function arrayCard(a, globalMdstat){
   card.appendChild(header);
   card.appendChild(body);
 
-  // wrapper koji drzi 2 kartice zaredom kao ranije
+  // wrapper for array card + raw details
   const wrap = document.createElement("div");
-  wrap.style.display = "grid";
-  wrap.style.gap = "16px";
+  wrap.className = "arrayWrap";
   wrap.appendChild(card);
   wrap.appendChild(rawCard);
 
