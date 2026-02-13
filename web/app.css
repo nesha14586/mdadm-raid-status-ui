@@ -197,6 +197,10 @@ body{
   color: var(--text);
 }
 
+.capacity {
+  cursor: help;
+}
+
 .meta{ font-size: 16px; }
 .meta .k{ color: var(--muted); font-weight: 600; }
 .meta .v{ font-weight: 700; }

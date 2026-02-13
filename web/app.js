@@ -246,15 +246,22 @@ function arrayCard(a, globalMdstat){
 
   const arraySize = ((a.array_size_human || a.array_size) || "").toString().trim();
   const usedDevSize = ((a.used_dev_size_human || a.used_dev_size) || "").toString().trim();
+  const raidDevices = (a.raid_devices || "").toString().trim();
 
-  const parts = [];
-  if(raidLevel) parts.push(`<span class="k">RAID:</span> <span class="v mono">${raidLevel}</span>`);
-  if(arraySize) parts.push(`<span class="k">Array:</span> <span class="v mono">${arraySize}</span>`);
-  if(usedDevSize) parts.push(`<span class="k">Disk:</span> <span class="v mono">${usedDevSize}</span>`);
+  if (raidLevel && arraySize) {
+    const tooltipParts = [];
+    if (usedDevSize) tooltipParts.push(`Per disk usable: ${usedDevSize}`);
+    if (raidDevices) tooltipParts.push(`Raid devices: ${raidDevices}`);
 
-  if(parts.length){
-    specWrap.innerHTML = parts.join(' <span class="dot">•</span> ');
-  }else{
+    const tooltip = tooltipParts.join('\n');
+
+    specWrap.innerHTML = `
+      <span class="k">RAID:</span>
+      <span class="v mono">${raidLevel}</span>
+      <span class="dot">•</span>
+      <span class="v mono capacity" title="${tooltip}">${arraySize}</span>
+    `;
+  } else {
     specWrap.classList.add("hidden");
   }
 
