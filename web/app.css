@@ -179,6 +179,24 @@ body{
   align-items: baseline;
 }
 
+.specWrap{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.specWrap .k{
+  color: var(--muted);
+  font-weight: 700;
+}
+.specWrap .v{
+  font-weight: 800;
+  color: var(--text);
+}
+
 .meta{ font-size: 16px; }
 .meta .k{ color: var(--muted); font-weight: 600; }
 .meta .v{ font-weight: 700; }

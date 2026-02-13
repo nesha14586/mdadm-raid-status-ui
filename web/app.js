@@ -237,6 +237,28 @@ function arrayCard(a, globalMdstat){
   const row2 = document.createElement("div");
   row2.className = "row smallrow";
 
+  // RAID + capacity (from structured fields, stable)
+  const specWrap = document.createElement("div");
+  specWrap.className = "specWrap";
+
+  const raidLevelRaw = (a.raid_level || "").toString().trim();
+  const raidLevel = raidLevelRaw ? raidLevelRaw.toUpperCase() : "";
+
+  const arraySize = (a.array_size || "").toString().trim();       // e.g. "11720780800 (10.92 TiB 12.00 TB)"
+  const usedDevSize = (a.used_dev_size || "").toString().trim();  // e.g. "5860390400 (5.46 TiB 6.00 TB)"
+
+  const parts = [];
+  if(raidLevel) parts.push(`<span class="k">RAID:</span> <span class="v mono">${raidLevel}</span>`);
+  if(arraySize) parts.push(`<span class="k">Array:</span> <span class="v mono">${arraySize}</span>`);
+  if(usedDevSize) parts.push(`<span class="k">Disk:</span> <span class="v mono">${usedDevSize}</span>`);
+
+  if(parts.length){
+    specWrap.innerHTML = parts.join(' <span class="dot">•</span> ');
+  }else{
+    specWrap.classList.add("hidden");
+  }
+
+
   const updatedWrap = document.createElement("div");
   updatedWrap.className = "muted";
   updatedWrap.innerHTML = `
@@ -270,6 +292,7 @@ function arrayCard(a, globalMdstat){
     progBadge.textContent = parts.join(" | ");
   }
 
+  row2.appendChild(specWrap);
   row2.appendChild(updatedWrap);
   row2.appendChild(progressWrap);
 
