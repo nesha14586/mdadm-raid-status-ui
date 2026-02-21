@@ -237,6 +237,35 @@ function arrayCard(a, globalMdstat){
   const row2 = document.createElement("div");
   row2.className = "row smallrow";
 
+  // RAID + capacity (from structured fields, stable)
+  const specWrap = document.createElement("div");
+  specWrap.className = "specWrap";
+
+  const raidLevelRaw = (a.raid_level || "").toString().trim();
+  const raidLevel = raidLevelRaw ? raidLevelRaw.toUpperCase() : "";
+
+  const arraySize = ((a.array_size_human || a.array_size) || "").toString().trim();
+  const usedDevSize = ((a.used_dev_size_human || a.used_dev_size) || "").toString().trim();
+  const raidDevices = (a.raid_devices || "").toString().trim();
+
+  if (raidLevel && arraySize) {
+    const tooltipParts = [];
+    if (usedDevSize) tooltipParts.push(`Per disk usable: ${usedDevSize}`);
+    if (raidDevices) tooltipParts.push(`Raid devices: ${raidDevices}`);
+
+    const tooltip = tooltipParts.join('\n');
+
+    specWrap.innerHTML = `
+      <span class="k">RAID:</span>
+      <span class="v mono">${raidLevel}</span>
+      <span class="dot">•</span>
+      <span class="v mono capacity" title="${tooltip}">${arraySize}</span>
+    `;
+  } else {
+    specWrap.classList.add("hidden");
+  }
+
+
   const updatedWrap = document.createElement("div");
   updatedWrap.className = "muted";
   updatedWrap.innerHTML = `
@@ -270,6 +299,7 @@ function arrayCard(a, globalMdstat){
     progBadge.textContent = parts.join(" | ");
   }
 
+  row2.appendChild(specWrap);
   row2.appendChild(updatedWrap);
   row2.appendChild(progressWrap);
 
@@ -328,10 +358,9 @@ function arrayCard(a, globalMdstat){
   card.appendChild(header);
   card.appendChild(body);
 
-  // wrapper koji drzi 2 kartice zaredom kao ranije
+  // wrapper for array card + raw details
   const wrap = document.createElement("div");
-  wrap.style.display = "grid";
-  wrap.style.gap = "16px";
+  wrap.className = "arrayWrap";
   wrap.appendChild(card);
   wrap.appendChild(rawCard);
 

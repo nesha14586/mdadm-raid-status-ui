@@ -150,6 +150,26 @@ body{
   border-color: color-mix(in srgb, var(--info) 28%, var(--btnBorder));
 }
 
+.arrayWrap{
+  display: grid;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+.arrayWrap > .card:first-child{
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-bottom: 0;
+}
+
+.arrayWrap > .card:last-child{
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
+  border-top: none;
+}
+
+
 .card{
   margin: 18px 0;
   background: var(--card);
@@ -177,6 +197,28 @@ body{
 .smallrow{
   margin-top: 10px;
   align-items: baseline;
+}
+
+.specWrap{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.specWrap .k{
+  color: var(--muted);
+  font-weight: 700;
+}
+.specWrap .v{
+  font-weight: 800;
+  color: var(--text);
+}
+
+.capacity {
+  cursor: help;
 }
 
 .meta{ font-size: 16px; }
