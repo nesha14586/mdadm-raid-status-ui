@@ -36,6 +36,8 @@
           <button id="btnThemeLight" class="btn ghost small" type="button" title="Light">Light</button>
           <button id="btnThemeDark" class="btn ghost small" type="button" title="Dark">Dark</button>
         </div>
+
+        <button id="btnSettings" class="btn ghost small" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog">&#9881;&#65038;</button>
       </div>
     </div>
   </header>
@@ -52,6 +54,107 @@
   </main>
 
   <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="settingsOverlay" class="settingsOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settingsModal">
+      <div class="settingsHeader">
+        <h2 id="settingsTitle">Settings</h2>
+        <button id="btnSettingsClose" class="btn ghost small" type="button" aria-label="Close settings">&#x2715;</button>
+      </div>
+
+      <div class="settingsBody">
+        <section class="settingsSection">
+          <h3 class="settingsSectionTitle">Notifications</h3>
+
+          <div class="settingsProvider">
+            <div class="settingsProviderHeader">
+              <span class="settingsProviderName">ntfy.sh</span>
+              <label class="toggle" title="Enable ntfy notifications">
+                <input type="checkbox" id="ntfyEnabled" />
+                <span class="toggleTrack"></span>
+              </label>
+            </div>
+
+            <div id="ntfyConfig" class="ntfyConfig">
+
+              <div class="formRow">
+                <label class="formLabel" for="ntfyServerUrl">Server root URL <span class="requiredMark">*</span></label>
+                <input id="ntfyServerUrl" class="formInput" type="url" placeholder="https://ntfy.sh" autocomplete="off" spellcheck="false" />
+              </div>
+
+              <div class="formRow">
+                <label class="formLabel" for="ntfyTopic">Topic <span class="requiredMark">*</span></label>
+                <input id="ntfyTopic" class="formInput" type="text" placeholder="my-raid-alerts" autocomplete="off" spellcheck="false" />
+              </div>
+
+              <div class="formRow">
+                <label class="formLabel" for="ntfyAuthType">Authentication</label>
+                <select id="ntfyAuthType" class="formSelect">
+                  <option value="token">Access Token</option>
+                  <option value="userpass">Username + Password</option>
+                </select>
+              </div>
+
+              <div id="ntfyAuthToken" class="formRow hidden">
+                <label class="formLabel" for="ntfyToken">Token</label>
+                <input id="ntfyToken" class="formInput" type="password" placeholder="tk_..." autocomplete="off" />
+              </div>
+
+              <div id="ntfyAuthUser" class="hidden">
+                <div class="formRow">
+                  <label class="formLabel" for="ntfyUsername">Username</label>
+                  <input id="ntfyUsername" class="formInput" type="text" autocomplete="off" spellcheck="false" />
+                </div>
+                <div class="formRow" style="margin-top:14px">
+                  <label class="formLabel" for="ntfyPassword">Password</label>
+                  <input id="ntfyPassword" class="formInput" type="password" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="formRow">
+                <label class="formLabel" for="ntfyPriority">Priority</label>
+                <select id="ntfyPriority" class="formSelect">
+                  <option value="1">1 — Min</option>
+                  <option value="2">2 — Low</option>
+                  <option value="3">3 — Default</option>
+                  <option value="4">4 — High</option>
+                  <option value="5">5 — Urgent (Max)</option>
+                </select>
+              </div>
+
+              <div class="formRow formRowInline">
+                <label class="formLabel" for="ntfyAutoRefresh">Auto-refresh (poll every 30s)</label>
+                <label class="toggle">
+                  <input type="checkbox" id="ntfyAutoRefresh" />
+                  <span class="toggleTrack"></span>
+                </label>
+              </div>
+
+              <div class="formGroup">
+                <div class="formGroupLabel">Notify on</div>
+                <div class="checkGrid">
+                  <label class="checkRow"><input type="checkbox" id="ntfyNotifyDegraded" /> Array degraded</label>
+                  <label class="checkRow"><input type="checkbox" id="ntfyNotifyFailed" /> Array failed</label>
+                  <label class="checkRow"><input type="checkbox" id="ntfyNotifyResyncStarted" /> Resync / rebuild started</label>
+                  <label class="checkRow"><input type="checkbox" id="ntfyNotifyResyncCompleted" /> Resync / rebuild completed</label>
+                  <label class="checkRow"><input type="checkbox" id="ntfyNotifyDiskFault" /> Disk fault</label>
+                  <label class="checkRow"><input type="checkbox" id="ntfyNotifyRecovered" /> Array recovered</label>
+                </div>
+              </div>
+
+              <div class="formActions">
+                <button id="btnNtfyTest" class="btn primary" type="button">Send test notification</button>
+                <button id="btnNtfySave" class="btn" type="button">Save</button>
+              </div>
+
+              <div id="ntfyValidationMsg" class="validationMsg hidden"></div>
+
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
 
   <script src="./app.js"></script>
 </body>

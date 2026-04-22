@@ -2,15 +2,245 @@ const TZ = "Europe/Belgrade";
 const STATUS_URL = "./status.json";
 
 const els = {
-  arraysRoot: document.getElementById("arraysRoot"),
-  lastFetch: document.getElementById("lastFetch"),
-  toast: document.getElementById("toast"),
-  btnRefresh: document.getElementById("btnRefresh"),
+  arraysRoot:    document.getElementById("arraysRoot"),
+  lastFetch:     document.getElementById("lastFetch"),
+  toast:         document.getElementById("toast"),
+  btnRefresh:    document.getElementById("btnRefresh"),
   btnThemeLight: document.getElementById("btnThemeLight"),
-  btnThemeDark: document.getElementById("btnThemeDark"),
+  btnThemeDark:  document.getElementById("btnThemeDark"),
+  // settings
+  btnSettings:              document.getElementById("btnSettings"),
+  settingsOverlay:          document.getElementById("settingsOverlay"),
+  btnSettingsClose:         document.getElementById("btnSettingsClose"),
+  ntfyEnabled:              document.getElementById("ntfyEnabled"),
+  ntfyConfig:               document.getElementById("ntfyConfig"),
+  ntfyServerUrl:            document.getElementById("ntfyServerUrl"),
+  ntfyTopic:                document.getElementById("ntfyTopic"),
+  ntfyAuthType:             document.getElementById("ntfyAuthType"),
+  ntfyAuthToken:            document.getElementById("ntfyAuthToken"),
+  ntfyToken:                document.getElementById("ntfyToken"),
+  ntfyAuthUser:             document.getElementById("ntfyAuthUser"),
+  ntfyUsername:             document.getElementById("ntfyUsername"),
+  ntfyPassword:             document.getElementById("ntfyPassword"),
+  ntfyPriority:             document.getElementById("ntfyPriority"),
+  ntfyAutoRefresh:          document.getElementById("ntfyAutoRefresh"),
+  ntfyNotifyDegraded:       document.getElementById("ntfyNotifyDegraded"),
+  ntfyNotifyFailed:         document.getElementById("ntfyNotifyFailed"),
+  ntfyNotifyResyncStarted:  document.getElementById("ntfyNotifyResyncStarted"),
+  ntfyNotifyResyncCompleted:document.getElementById("ntfyNotifyResyncCompleted"),
+  ntfyNotifyDiskFault:      document.getElementById("ntfyNotifyDiskFault"),
+  ntfyNotifyRecovered:      document.getElementById("ntfyNotifyRecovered"),
+  btnNtfyTest:              document.getElementById("btnNtfyTest"),
+  btnNtfySave:              document.getElementById("btnNtfySave"),
+  ntfyValidationMsg:        document.getElementById("ntfyValidationMsg"),
 };
 
-let lastData = null; // cuvamo poslednji payload za "ago" refresh
+let lastData = null;
+let pollInterval = null;
+
+// ── ntfy settings ─────────────────────────────────────────────────────────────
+
+const NTFY_DEFAULTS = {
+  enabled: false,
+  serverUrl: "",
+  topic: "",
+  authType: "token",
+  priority: 3,
+  autoRefresh: false,
+  notify: {
+    degraded: true,
+    failed: true,
+    resyncStarted: true,
+    resyncCompleted: true,
+    diskFault: true,
+    recovered: true,
+  },
+};
+
+function loadStoredJson(key) {
+  try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
+}
+
+function deepClone(v) {
+  return typeof structuredClone === "function"
+    ? structuredClone(v)
+    : JSON.parse(JSON.stringify(v));
+}
+
+function loadNtfySettings() {
+  const base = Object.assign(deepClone(NTFY_DEFAULTS), loadStoredJson("raidNtfyConfig"));
+  base.notify = Object.assign(deepClone(NTFY_DEFAULTS.notify), base.notify || {});
+  const creds = loadStoredJson("raidNtfyCreds");
+  return Object.assign(base, { token: "", username: "", password: "" }, creds);
+}
+
+async function saveNtfySettings(cfg) {
+  const { token, username, password, ...rest } = cfg;
+  // Write full config including credentials to disk for the generator.
+  // GET on this file is blocked by nginx so credentials are not exposed via browser.
+  const res = await fetch("./notifications.json", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cfg, null, 2),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  localStorage.setItem("raidNtfyConfig", JSON.stringify(rest));
+  localStorage.setItem("raidNtfyCreds", JSON.stringify({ token, username, password }));
+}
+
+// ── ntfy test (browser-side, for verifying config) ────────────────────────────
+
+async function sendNtfyTest(cfg) {
+  const url = `${cfg.serverUrl.replace(/\/$/, "")}/${encodeURIComponent(cfg.topic)}`;
+  const headers = {
+    "Content-Type": "text/plain",
+    "Title": "mdstat-ui Test Notification",
+    "Priority": String(cfg.priority),
+    "Tags": "white_check_mark",
+  };
+  if (cfg.authType === "token" && cfg.token) {
+    headers["Authorization"] = `Bearer ${cfg.token}`;
+  } else if (cfg.authType === "userpass" && cfg.username && cfg.password) {
+    headers["Authorization"] = "Basic " + btoa(
+      Array.from(new TextEncoder().encode(`${cfg.username}:${cfg.password}`), b => String.fromCharCode(b)).join("")
+    );
+  }
+  const res = await fetch(url, { method: "POST", headers, body: "ntfy notifications are configured correctly." });
+  if (!res.ok) throw new Error(`ntfy ${res.status}`);
+}
+
+// ── settings modal ────────────────────────────────────────────────────────────
+
+function openSettings() {
+  populateSettingsForm(loadNtfySettings());
+  els.settingsOverlay.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  els.btnSettingsClose.focus();
+}
+
+function closeSettings() {
+  els.settingsOverlay.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+function updateAuthVisibility(authType) {
+  els.ntfyAuthToken.classList.toggle("hidden", authType !== "token");
+  els.ntfyAuthUser.classList.toggle("hidden",  authType !== "userpass");
+}
+
+function populateSettingsForm(cfg) {
+  els.ntfyEnabled.checked               = cfg.enabled;
+  els.ntfyServerUrl.value               = cfg.serverUrl;
+  els.ntfyTopic.value                   = cfg.topic;
+  els.ntfyAuthType.value                = cfg.authType;
+  els.ntfyToken.value                   = cfg.token;
+  els.ntfyUsername.value                = cfg.username;
+  els.ntfyPassword.value                = cfg.password;
+  els.ntfyPriority.value                = String(cfg.priority);
+  els.ntfyAutoRefresh.checked           = cfg.autoRefresh;
+  els.ntfyNotifyDegraded.checked        = cfg.notify.degraded;
+  els.ntfyNotifyFailed.checked          = cfg.notify.failed;
+  els.ntfyNotifyResyncStarted.checked   = cfg.notify.resyncStarted;
+  els.ntfyNotifyResyncCompleted.checked = cfg.notify.resyncCompleted;
+  els.ntfyNotifyDiskFault.checked       = cfg.notify.diskFault;
+  els.ntfyNotifyRecovered.checked       = cfg.notify.recovered;
+  updateAuthVisibility(cfg.authType);
+  clearValidationMsg();
+}
+
+function readSettingsForm() {
+  return {
+    enabled:    els.ntfyEnabled.checked,
+    serverUrl:  els.ntfyServerUrl.value.trim() || "https://ntfy.sh",
+    topic:      els.ntfyTopic.value.trim(),
+    authType:   els.ntfyAuthType.value,
+    token:      els.ntfyToken.value.trim(),
+    username:   els.ntfyUsername.value.trim(),
+    password:   els.ntfyPassword.value,
+    priority:   Number(els.ntfyPriority.value) || 3,
+    autoRefresh:els.ntfyAutoRefresh.checked,
+    notify: {
+      degraded:         els.ntfyNotifyDegraded.checked,
+      failed:           els.ntfyNotifyFailed.checked,
+      resyncStarted:    els.ntfyNotifyResyncStarted.checked,
+      resyncCompleted:  els.ntfyNotifyResyncCompleted.checked,
+      diskFault:        els.ntfyNotifyDiskFault.checked,
+      recovered:        els.ntfyNotifyRecovered.checked,
+    },
+  };
+}
+
+function validateNtfyConfig(cfg) {
+  if (!cfg.serverUrl) return "Server root URL is required.";
+  try { new URL(cfg.serverUrl); } catch { return "Server root URL must be a valid URL (e.g. https://ntfy.sh)."; }
+  if (!cfg.topic) return "Topic is required.";
+  if (cfg.authType === "token" && !cfg.token) return "Access token is required.";
+  if (cfg.authType === "userpass" && (!cfg.username || !cfg.password)) return "Username and password are required.";
+  return null;
+}
+
+function showValidationMsg(msg) {
+  els.ntfyValidationMsg.textContent = msg;
+  els.ntfyValidationMsg.classList.remove("hidden");
+}
+
+function clearValidationMsg() {
+  els.ntfyValidationMsg.textContent = "";
+  els.ntfyValidationMsg.classList.add("hidden");
+}
+
+function applyAutoRefresh(cfg) {
+  clearInterval(pollInterval);
+  if (cfg.enabled && cfg.autoRefresh) {
+    pollInterval = setInterval(fetchStatus, 30_000);
+  }
+}
+
+// settings event listeners
+els.btnSettings.addEventListener("click", openSettings);
+els.btnSettingsClose.addEventListener("click", closeSettings);
+els.settingsOverlay.addEventListener("click", (e) => { if (e.target === els.settingsOverlay) closeSettings(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !els.settingsOverlay.classList.contains("hidden")) closeSettings();
+});
+
+els.ntfyAuthType.addEventListener("change", () => updateAuthVisibility(els.ntfyAuthType.value));
+
+els.btnNtfySave.addEventListener("click", async () => {
+  const cfg = readSettingsForm();
+  const err = cfg.enabled ? validateNtfyConfig(cfg) : null;
+  if (err) { showValidationMsg(err); return; }
+  clearValidationMsg();
+  els.btnNtfySave.disabled = true;
+  try {
+    await saveNtfySettings(cfg);
+    applyAutoRefresh(cfg);
+    toast("Settings saved");
+    closeSettings();
+  } catch (e) {
+    showValidationMsg(`Save failed: ${e.message}`);
+  } finally {
+    els.btnNtfySave.disabled = false;
+  }
+});
+
+els.btnNtfyTest.addEventListener("click", async () => {
+  const cfg = readSettingsForm();
+  const err = validateNtfyConfig(cfg);
+  if (err) { showValidationMsg(err); return; }
+  clearValidationMsg();
+  els.btnNtfyTest.disabled = true;
+  els.btnNtfyTest.textContent = "Sending…";
+  try {
+    await sendNtfyTest(cfg);
+    toast("Test notification sent");
+  } catch (e) {
+    showValidationMsg(`Send failed: ${e.message}`);
+  } finally {
+    els.btnNtfyTest.disabled = false;
+    els.btnNtfyTest.textContent = "Send test notification";
+  }
+});
 
 function toast(msg){
   els.toast.textContent = msg;
@@ -471,6 +701,7 @@ els.btnThemeLight.addEventListener("click", () => setTheme("light"));
 els.btnThemeDark.addEventListener("click", () => setTheme("dark"));
 
 applyTheme();
+applyAutoRefresh(loadNtfySettings());
 fetchStatus();
 
 setInterval(refreshAges, 5000);

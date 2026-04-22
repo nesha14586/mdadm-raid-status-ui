@@ -42,6 +42,7 @@ of array health without installing a full monitoring stack.
 -   Dark / Light UI
 -   Fully containerized
 -   No privileged container required
+-   **ntfy push notifications** — server-side, works 24/7 without a browser
 
 ------------------------------------------------------------------------
 
@@ -51,14 +52,14 @@ of array health without installing a full monitoring stack.
     |  raid-status-gen | -----> |  status.json     |
     |  (generator)     |        |  (shared volume) |
     +------------------+        +------------------+
-                                           |
-                                           v
-                                 +------------------+
-                                 |  raid-status-web |
-                                 |  (nginx static)  |
-                                 +------------------+
+            |                              |
+            | ntfy notifications           v
+            v                   +------------------+
+       ntfy server              |  raid-status-web |
+                                |  (nginx static)  |
+                                +------------------+
 
--   The generator container periodically writes `status.json`
+-   The generator container periodically reads RAID state, writes `status.json`, and sends ntfy notifications on state changes
 -   The web container serves static files only
 -   No database required
 
@@ -109,6 +110,31 @@ Fields:
 -   `labels` Allows custom display names for arrays in the UI.
 
 If both `include_arrays` and `exclude_arrays` are empty, all detected arrays will be shown.
+
+------------------------------------------------------------------------
+
+## Notifications (ntfy)
+
+Push notifications are sent server-side by the generator — no browser required.
+
+Configure via the **⚙ Settings** button in the UI. Supported options:
+
+-   Server root URL (self-hosted or `https://ntfy.sh`)
+-   Topic
+-   Authentication: Access Token or Username + Password
+-   Priority (1 = min … 5 = urgent)
+-   Per-event toggles: array degraded, array failed, disk fault, resync started/completed, array recovered
+
+Settings are saved to `web/notifications.json`. This file is readable by the generator container and **write-only from the browser** (nginx allows only `PUT` — all other methods including `GET`, `HEAD`, and `OPTIONS` are blocked).
+
+Settings (including credentials) are also cached in browser `localStorage` so the form stays pre-filled between sessions. Credentials are written to `notifications.json` on disk when saved; that file is not served to browsers.
+
+> **Important:** `web/notifications.json` contains credentials and is listed in `.gitignore`. Do not commit it.
+
+After saving settings, the generator picks up the new config automatically on its next run (within the configured `INTERVAL`).
+
+> Notification state is stored in `/tmp/raid_prev_state.json` inside the generator container.
+> On container restart, the first run re-establishes the baseline without sending notifications.
 
 ------------------------------------------------------------------------
 
@@ -170,7 +196,8 @@ services:
     ports:
       - "8099:80"
     volumes:
-      - ./web:/usr/share/nginx/html:ro
+      - ./web:/usr/share/nginx/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 ```
 
 ------------------------------------------------------------------------

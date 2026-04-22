@@ -7,7 +7,7 @@ CONF="${CONF:-/data/config.json}"
 mdstat="$(cat /proc/mdstat || true)"
 
 python3 - <<'PY' > "${OUT}.tmp"
-import json, os, re, subprocess, datetime
+import json, os, re, subprocess, datetime, sys, urllib.request, urllib.parse, base64
 
 OUT = os.environ.get("OUT", "/data/status.json")
 CONF = os.environ.get("CONF", "/data/config.json")
@@ -320,6 +320,136 @@ data = {
     "arrays": arrays,
     "mdstat": mdstat
 }
+
+# ── ntfy notifications ────────────────────────────────────────────────────────
+
+_NTFY_CFG  = os.path.join(os.path.dirname(OUT), "notifications.json")
+_PREV_STATE = "/tmp/raid_prev_state.json"
+
+def _load_ntfy_cfg():
+    try:
+        with open(_NTFY_CFG, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _to_int(v):
+    try: return int(v)
+    except (TypeError, ValueError): return 0
+
+def _snap(arrays):
+    out = {}
+    for a in arrays:
+        bad = sorted(
+            m["device"] for m in a.get("members", [])
+            if any(x in (m.get("state") or "").lower()
+                   for x in ("faulty", "failed", "removed"))
+        )
+        out[a["array"]] = {
+            "state":    (a.get("state") or "").lower().strip(),
+            "degraded": _to_int(a.get("degraded")),
+            "failed":   _to_int(a.get("failed")),
+            "action":   (a.get("progress", {}).get("action") or "").strip(),
+            "faulty":   bad,
+        }
+    return out
+
+def _diff(prev, cur, arrays):
+    events = []
+    for a in arrays:
+        k = a["array"]
+        p, n = prev.get(k), cur.get(k)
+        if not p or not n:
+            continue
+        lbl = a.get("label") or k
+        if n["degraded"] > 0 and p["degraded"] == 0:
+            events.append(("degraded",
+                f"RAID Degraded: {lbl}",
+                f"Array {k} is degraded — {n['degraded']} device(s) failed/missing.",
+                "warning,floppy_disk"))
+        if "failed" in n["state"] and "failed" not in p["state"]:
+            events.append(("failed",
+                f"RAID FAILED: {lbl}",
+                f"Array {k} has FAILED. Immediate action required.",
+                "rotating_light,floppy_disk"))
+        for dev in n["faulty"]:
+            if dev not in p["faulty"]:
+                events.append(("diskFault",
+                    f"Disk Fault: {lbl}",
+                    f"Device {dev} in {k} is faulty/failed.",
+                    "warning,floppy_disk"))
+        if n["action"] and not p["action"]:
+            events.append(("resyncStarted",
+                f"Resync Started: {lbl}",
+                f"Array {k} started {n['action']}.",
+                "arrows_counterclockwise,floppy_disk"))
+        if not n["action"] and p["action"]:
+            events.append(("resyncCompleted",
+                f"Resync Completed: {lbl}",
+                f"Array {k} finished {p['action']}.",
+                "white_check_mark,floppy_disk"))
+        if (p["degraded"] > 0 or p["failed"] > 0 or "failed" in p["state"]) and \
+                "clean" in n["state"] and n["degraded"] == 0 and n["failed"] == 0:
+            events.append(("recovered",
+                f"Array Recovered: {lbl}",
+                f"Array {k} is now clean — all devices healthy.",
+                "tada,floppy_disk"))
+    return events
+
+def _send_ntfy(cfg, title, body, tags):
+    server = cfg.get("serverUrl", "").rstrip("/")
+    topic  = cfg.get("topic", "").strip()
+    if not server or not topic:
+        return
+    url  = f"{server}/{urllib.parse.quote(topic, safe='')}"
+    hdrs = {
+        "Content-Type": "text/plain",
+        "Title":    title,
+        "Priority": str(cfg.get("priority", 3)),
+        "Tags":     tags,
+    }
+    auth = cfg.get("authType", "token")
+    if auth == "token" and cfg.get("token"):
+        hdrs["Authorization"] = f"Bearer {cfg['token']}"
+    elif auth == "userpass" and cfg.get("username") and cfg.get("password"):
+        creds = base64.b64encode(
+            f"{cfg['username']}:{cfg['password']}".encode()
+        ).decode()
+        hdrs["Authorization"] = f"Basic {creds}"
+    req = urllib.request.Request(url, data=body.encode(), headers=hdrs, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10):
+            pass
+    except Exception as e:
+        print(f"[ntfy] send failed: {e}", file=sys.stderr)
+
+def _notify(arrays):
+    cfg = _load_ntfy_cfg()
+    if not cfg.get("enabled"):
+        return
+    notify_types = cfg.get("notify", {})
+    cur  = _snap(arrays)
+    prev = {}
+    try:
+        with open(_PREV_STATE, "r") as f:
+            prev = json.load(f)
+    except Exception:
+        pass
+    try:
+        with open(_PREV_STATE, "w") as f:
+            json.dump(cur, f)
+    except Exception as e:
+        print(f"[ntfy] state save failed: {e}", file=sys.stderr)
+    if not prev:
+        return  # first run after start — save state, send nothing
+    for (ev_type, title, msg, tags) in _diff(prev, cur, arrays):
+        if not notify_types.get(ev_type, True):
+            continue
+        _send_ntfy(cfg, title, msg, tags)
+
+_notify(arrays)
+
+# ── output ────────────────────────────────────────────────────────────────────
 
 print(json.dumps(data, ensure_ascii=False))
 PY
