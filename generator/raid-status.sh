@@ -333,6 +333,10 @@ def _load_ntfy_cfg():
     except Exception:
         return {}
 
+def _to_int(v):
+    try: return int(v)
+    except (TypeError, ValueError): return 0
+
 def _snap(arrays):
     out = {}
     for a in arrays:
@@ -343,8 +347,8 @@ def _snap(arrays):
         )
         out[a["array"]] = {
             "state":    (a.get("state") or "").lower().strip(),
-            "degraded": int(a.get("degraded") or 0),
-            "failed":   int(a.get("failed")   or 0),
+            "degraded": _to_int(a.get("degraded")),
+            "failed":   _to_int(a.get("failed")),
             "action":   (a.get("progress", {}).get("action") or "").strip(),
             "faulty":   bad,
         }

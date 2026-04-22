@@ -61,9 +61,15 @@ function loadStoredJson(key) {
   try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
 }
 
+function deepClone(v) {
+  return typeof structuredClone === "function"
+    ? structuredClone(v)
+    : JSON.parse(JSON.stringify(v));
+}
+
 function loadNtfySettings() {
-  const base = Object.assign(structuredClone(NTFY_DEFAULTS), loadStoredJson("raidNtfyConfig"));
-  base.notify = Object.assign(structuredClone(NTFY_DEFAULTS.notify), base.notify || {});
+  const base = Object.assign(deepClone(NTFY_DEFAULTS), loadStoredJson("raidNtfyConfig"));
+  base.notify = Object.assign(deepClone(NTFY_DEFAULTS.notify), base.notify || {});
   const creds = loadStoredJson("raidNtfyCreds");
   return Object.assign(base, { token: "", username: "", password: "" }, creds);
 }
@@ -95,7 +101,9 @@ async function sendNtfyTest(cfg) {
   if (cfg.authType === "token" && cfg.token) {
     headers["Authorization"] = `Bearer ${cfg.token}`;
   } else if (cfg.authType === "userpass" && cfg.username && cfg.password) {
-    headers["Authorization"] = "Basic " + btoa(unescape(encodeURIComponent(`${cfg.username}:${cfg.password}`)));
+    headers["Authorization"] = "Basic " + btoa(
+      Array.from(new TextEncoder().encode(`${cfg.username}:${cfg.password}`), b => String.fromCharCode(b)).join("")
+    );
   }
   const res = await fetch(url, { method: "POST", headers, body: "ntfy notifications are configured correctly." });
   if (!res.ok) throw new Error(`ntfy ${res.status}`);

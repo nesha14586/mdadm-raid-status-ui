@@ -4,6 +4,7 @@ docker-compose.yml
 
 # Generated files
 web/status.json
+web/notifications.json
 
 # OS
 .DS_Store

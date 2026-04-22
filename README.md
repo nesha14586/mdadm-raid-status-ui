@@ -125,9 +125,11 @@ Configure via the **⚙ Settings** button in the UI. Supported options:
 -   Priority (1 = min … 5 = urgent)
 -   Per-event toggles: array degraded, array failed, disk fault, resync started/completed, array recovered
 
-Settings are saved to `web/notifications.json`. This file is readable by the generator container and **write-only from the browser** (nginx blocks GET requests to it).
+Settings are saved to `web/notifications.json`. This file is readable by the generator container and **write-only from the browser** (nginx allows only `PUT` — all other methods including `GET`, `HEAD`, and `OPTIONS` are blocked).
 
-Settings (including credentials) are also cached in browser `localStorage` so the form stays pre-filled between sessions. Credentials are written to `notifications.json` on disk when saved; that file is not served to browsers (nginx blocks GET).
+Settings (including credentials) are also cached in browser `localStorage` so the form stays pre-filled between sessions. Credentials are written to `notifications.json` on disk when saved; that file is not served to browsers.
+
+> **Important:** `web/notifications.json` contains credentials and is listed in `.gitignore`. Do not commit it.
 
 After saving settings, the generator picks up the new config automatically on its next run (within the configured `INTERVAL`).
 
