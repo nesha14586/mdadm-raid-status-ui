@@ -57,25 +57,29 @@ const NTFY_DEFAULTS = {
   },
 };
 
+function loadStoredJson(key) {
+  try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
+}
+
 function loadNtfySettings() {
-  const base = Object.assign(structuredClone(NTFY_DEFAULTS),
-    JSON.parse(localStorage.getItem("raidNtfyConfig") || "{}"));
+  const base = Object.assign(structuredClone(NTFY_DEFAULTS), loadStoredJson("raidNtfyConfig"));
   base.notify = Object.assign(structuredClone(NTFY_DEFAULTS.notify), base.notify || {});
-  const creds = JSON.parse(localStorage.getItem("raidNtfyCreds") || "{}");
+  const creds = loadStoredJson("raidNtfyCreds");
   return Object.assign(base, { token: "", username: "", password: "" }, creds);
 }
 
-function saveNtfySettings(cfg) {
+async function saveNtfySettings(cfg) {
   const { token, username, password, ...rest } = cfg;
-  localStorage.setItem("raidNtfyConfig", JSON.stringify(rest));
-  localStorage.setItem("raidNtfyCreds", JSON.stringify({ token, username, password }));
   // Write full config including credentials to disk for the generator.
   // GET on this file is blocked by nginx so credentials are not exposed via browser.
-  fetch("./notifications.json", {
+  const res = await fetch("./notifications.json", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cfg, null, 2),
-  }).catch(() => {});
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  localStorage.setItem("raidNtfyConfig", JSON.stringify(rest));
+  localStorage.setItem("raidNtfyCreds", JSON.stringify({ token, username, password }));
 }
 
 // ── ntfy test (browser-side, for verifying config) ────────────────────────────
@@ -194,15 +198,22 @@ document.addEventListener("keydown", (e) => {
 
 els.ntfyAuthType.addEventListener("change", () => updateAuthVisibility(els.ntfyAuthType.value));
 
-els.btnNtfySave.addEventListener("click", () => {
+els.btnNtfySave.addEventListener("click", async () => {
   const cfg = readSettingsForm();
-  const err = validateNtfyConfig(cfg);
+  const err = cfg.enabled ? validateNtfyConfig(cfg) : null;
   if (err) { showValidationMsg(err); return; }
   clearValidationMsg();
-  saveNtfySettings(cfg);
-  applyAutoRefresh(cfg);
-  toast("Settings saved");
-  closeSettings();
+  els.btnNtfySave.disabled = true;
+  try {
+    await saveNtfySettings(cfg);
+    applyAutoRefresh(cfg);
+    toast("Settings saved");
+    closeSettings();
+  } catch (e) {
+    showValidationMsg(`Save failed: ${e.message}`);
+  } finally {
+    els.btnNtfySave.disabled = false;
+  }
 });
 
 els.btnNtfyTest.addEventListener("click", async () => {

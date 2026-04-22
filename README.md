@@ -127,13 +127,9 @@ Configure via the **⚙ Settings** button in the UI. Supported options:
 
 Settings are saved to `web/notifications.json`. This file is readable by the generator container and **write-only from the browser** (nginx blocks GET requests to it).
 
-Credentials are never stored in `localStorage` — only written to `notifications.json` on disk, which is not served to browsers.
+Settings (including credentials) are also cached in browser `localStorage` so the form stays pre-filled between sessions. Credentials are written to `notifications.json` on disk when saved; that file is not served to browsers (nginx blocks GET).
 
-After saving settings, rebuild the generator container to pick up the new config:
-
-``` bash
-docker compose up -d --build raid-status-gen
-```
+After saving settings, the generator picks up the new config automatically on its next run (within the configured `INTERVAL`).
 
 > Notification state is stored in `/tmp/raid_prev_state.json` inside the generator container.
 > On container restart, the first run re-establishes the baseline without sending notifications.
